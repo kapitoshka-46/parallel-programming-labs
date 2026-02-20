@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-long long vector_cycle(const int* x, const int* y, int length) {
+long long calculate(const int* x, const int* y, int length) {
     long long s;
     for (int i = 0; i < length; i++) {
         for (int j = 0; j < length; j++) {
@@ -32,18 +32,13 @@ int main(int argc, char* argv[]) {
     }
 
     const int length = atoi(argv[1]);
-    int* x =  create_vector(length);
-    int* y = create_vector(length);
-
-    if (!x || !y) {
-        delete_vector(&x);
-        delete_vector(&y);
-        puts("Bad malloc. May be not enough memory?");
-        return 1;
-    }
-
-    long long s = vector_cycle(x, y, length);
-    printf("%lld\n", s);
     
+    int *x = create_vector(length);
+    int *y = create_vector(length);
+
+    long long result = calculate(x, y, length);
+    printf("%lld\n", result);
+    
+    delete_vector(&x); delete_vector(&y);
     return 0;
 }
