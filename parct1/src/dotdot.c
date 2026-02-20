@@ -46,8 +46,6 @@ void process_rank_zero(int length, int x_length, int size) {
         int length_send = part_length(length, i, size);
         MPI_Send(x + i*x_length, length_send, MPI_INT, i, TAG_PART_OF_FIRST, MPI_COMM_WORLD);
     }       
-    LOG("sended");
-
     // -------------- calculate the part ----------------//
     long long sum = calculate(x, y, x_length, length);
 
@@ -73,7 +71,7 @@ void process_rank_non_zero(int length, int x_length, int rank, int size) {
         // ---------------- first vector -----------------
         int* x = malloc(sizeof(int) * x_length);
         MPI_Recv(x, x_length, MPI_INT, 0, TAG_PART_OF_FIRST, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        LOG("received");
+       
         // ----------------- calculate -------------------- //
         long long sum = calculate(x, y, x_length, length);
         
@@ -85,7 +83,7 @@ void process_rank_non_zero(int length, int x_length, int rank, int size) {
 int main(int argc, char **argv) {
     srand(10000);
     MPI_Init(&argc, &argv);
-    
+
     if (argc != 2) {
         puts("Specify the vector length");
         puts("Usage:");
@@ -94,8 +92,7 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    int rank;
-    int size;
+    int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
