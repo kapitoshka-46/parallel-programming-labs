@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 long long calculate(const int* x, const int* y, int length) {
-    long long s;
+    long long s = 0;
     for (int i = 0; i < length; i++) {
         for (int j = 0; j < length; j++) {
             s += x[i] * y[j];       
@@ -14,7 +14,7 @@ long long calculate(const int* x, const int* y, int length) {
 int* create_vector(int length) {
     int* vector = malloc(sizeof(int) * length);
     if (!vector) return NULL;
-    for (int i = 0; i < length; i++) { vector[i] = rand(); }
+    for (int i = 0; i < length; i++) { vector[i] = rand() % 10; }
     return vector;
 }
 
@@ -24,6 +24,7 @@ void delete_vector(int** v) {
 }
 
 int main(int argc, char* argv[]) {
+    srand(10000);
     if (argc != 2) {
         puts("Specify the vector length");
         puts("Usage:");
