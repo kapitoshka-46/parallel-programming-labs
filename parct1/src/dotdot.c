@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+#define SEED 1000
+
 #define LOG(format, ...) printf("%d: " format "\n", rank, ##__VA_ARGS__)
 void LOG_VECTOR(int rank, const char* name, int* x, int length);
 
@@ -30,6 +32,7 @@ int part_length(int length, int rank, int size) {
 
 void process_rank_zero(int length, int x_length, int size) {
     int rank = 0;
+    double timer = MPI_Wtime();
     
     // init vectors
     int* x = create_vector(length);
@@ -42,12 +45,12 @@ void process_rank_zero(int length, int x_length, int size) {
     // --------------- send vectors ---------------------//
     for (int i = 1; i < size; i++) {
         MPI_Send(y, length, MPI_INT, i, TAG_FULL_SECOND, MPI_COMM_WORLD);
-        
         int length_send = part_length(length, i, size);
         MPI_Send(x + i*x_length, length_send, MPI_INT, i, TAG_PART_OF_FIRST, MPI_COMM_WORLD);
     }       
     // -------------- calculate the part ----------------//
     long long sum = calculate(x, y, x_length, length);
+    LOG("calculated: %lld", sum);
 
     // ---------------- merge (recieve) results -------------------//
     for (int i = 1; i < size; i++) {
@@ -55,7 +58,11 @@ void process_rank_zero(int length, int x_length, int size) {
         MPI_Recv(&recieve, 1, MPI_LONG_LONG, i, TAG_RESULT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         sum += recieve;
     }
-    printf("%lld\n", sum); 
+
+
+    timer = MPI_Wtime() - timer;
+    printf("%lld %.2lf\n", sum, timer);
+
     delete_vector(&x);
     delete_vector(&y);
 }
@@ -64,24 +71,23 @@ void process_rank_zero(int length, int x_length, int size) {
 void process_rank_non_zero(int length, int x_length, int rank, int size) {
     // --------------- recieve vectors -------------------// 
         // ---------------- 2nd vector -------------------
-        int* y = malloc(sizeof(int) * length);    
+        int* y = (int*) malloc(sizeof(int) * length);    
         if (!y) MPI_Abort(MPI_COMM_WORLD, 2);
         MPI_Recv(y, length, MPI_INT, 0, TAG_FULL_SECOND, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-        // ---------------- first vector -----------------
-        int* x = malloc(sizeof(int) * x_length);
+        // ---------------- 1st vector -----------------
+        int* x = (int*) malloc(sizeof(int) * x_length);
         MPI_Recv(x, x_length, MPI_INT, 0, TAG_PART_OF_FIRST, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-       
         // ----------------- calculate -------------------- //
         long long sum = calculate(x, y, x_length, length);
-        
         // --------------- merge to rank0 ----------------- //
         MPI_Send(&sum, 1, MPI_LONG_LONG, 0, TAG_RESULT, MPI_COMM_WORLD);
+        free(x);
 }
 
 
 int main(int argc, char **argv) {
-    srand(10000);
+    srand(SEED);
     MPI_Init(&argc, &argv);
 
     if (argc != 2) {
@@ -105,6 +111,7 @@ int main(int argc, char **argv) {
     else {  // can't enter this block if size == 1 becuse (rank < size) => (rank == 0)
         process_rank_non_zero(length, x_length, rank, size);
     }
+    
     MPI_Finalize();
     return 0;
 }
@@ -114,7 +121,7 @@ int main(int argc, char **argv) {
 // ============== Vector functions ===============
 
 int* create_vector(int length) {
-    int* vector = malloc(sizeof(int) * length);
+    int* vector = (int*)malloc(sizeof(int) * length);
     if (!vector) return NULL;
     for (int i = 0; i < length; i++) { vector[i] = rand() % 10; }
     return vector;
