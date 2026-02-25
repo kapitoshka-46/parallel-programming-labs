@@ -50,11 +50,10 @@ void process_rank_zero(int length, int x_length, int size) {
     }       
     // -------------- calculate the part ----------------//
     long long sum = calculate(x, y, x_length, length);
-    LOG("calculated: %lld", sum);
 
     // ---------------- merge (recieve) results -------------------//
     for (int i = 1; i < size; i++) {
-        int recieve;
+        long long recieve;
         MPI_Recv(&recieve, 1, MPI_LONG_LONG, i, TAG_RESULT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         sum += recieve;
     }
