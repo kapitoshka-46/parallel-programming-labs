@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+#define SEED 1000 
+
 #define LOG(format, ...) printf("%d: " format "\n", rank, ##__VA_ARGS__)
 void LOG_VECTOR(int rank, const char* name, int* x, int length);
 
@@ -32,7 +34,7 @@ void fill_vector(int *vector, int length);
 
 
 int main(int argc, char **argv) {
-    srand(10000);
+    srand(SEED);
     MPI_Init(&argc, &argv);
 
     if (argc != 2) {
@@ -51,22 +53,21 @@ int main(int argc, char **argv) {
 
     const int length = atoi(argv[1]);
    
+    double timer = MPI_Wtime();
+    
     // init vectors
     int*global_x = NULL;    
-    int *global_y = malloc(sizeof(int) *length);
-    if (!global_y) MPI_Abort(MPI_COMM_WORLD, 2);
-    
+    int *global_y = (int*) malloc(sizeof(int) *length);
     if (rank == 0) { 
-        global_x = malloc(sizeof(int) * length);
-        if (!global_x) MPI_Abort(MPI_COMM_WORLD, 1);
-
+        global_x = (int*) malloc(sizeof(int) * length);
         fill_vector(global_x, length);
         fill_vector(global_y, length);
         
         if (size == 1) {
             long long sum = 0;
             sum = calculate(global_x, global_y, length, length);
-            printf("==%lld", sum);
+            timer = MPI_Wtime() - timer;
+            printf("%lld, %lf\n", sum, timer);
             delete_vector(&global_x); delete_vector(&global_y);
             MPI_Finalize(); 
             return 0;
@@ -76,27 +77,34 @@ int main(int argc, char **argv) {
     
     
     // ------------------- size > 1 --------------------
-    const int local_x_length = length / size;   // we will calculate remain in rank 0
 
-    int* local_x = malloc(sizeof(int) * local_x_length);
-    if (local_x == NULL) MPI_Abort(MPI_COMM_WORLD, 1);
+    int* displs = (int*) malloc(sizeof(int) * size);
+    int* sendcounts = (int*) malloc(sizeof(int) * size);
 
+    displs[0] = 0;
+    sendcounts[0] = length / size + length % size;
+    for (int i = 1; i < size; i++) {
+        displs[i] = displs[i - 1] + sendcounts[i - 1];
+        sendcounts[i] = length / size;
+    }
+
+    int* local_x = (int*) malloc(sizeof(int) * sendcounts[rank]);
     MPI_Bcast(global_y, length, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Scatter(global_x, local_x_length, MPI_INT, local_x, local_x_length, MPI_INT, 0, MPI_COMM_WORLD);
-
-    long long local_sum = calculate(local_x, global_y, local_x_length, length);
-    long long result_sum = 0;
-    if (rank == 0) {
-        int already_calculated = size * local_x_length;
-        local_sum += calculate(global_x + already_calculated, global_y, length - already_calculated, length);
-    }
-          
-    MPI_Reduce(&local_sum, &result_sum, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     
+    MPI_Scatterv(global_x, sendcounts, displs, MPI_INT, 
+        local_x, sendcounts[rank], MPI_INT, 0, MPI_COMM_WORLD);
+
+    long long local_sum = calculate(local_x, global_y, sendcounts[rank], length);
+    long long global_sum = 0;
+    MPI_Reduce(&local_sum, &global_sum, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
     if (rank == 0) {
-        printf("%lld\n", result_sum);
+        timer = MPI_Wtime() - timer;
+        printf("%lld %.2lf\n", global_sum, timer);
     }
 
+    free(displs);
+    free(sendcounts);
     delete_vector(&local_x);
     delete_vector(&global_y);
     delete_vector(&global_x);
@@ -113,7 +121,7 @@ void fill_vector(int *vector, int length) {
 }
 
 int* create_vector(int length) {
-    int* vector = malloc(sizeof(int) * length);
+    int* vector = (int*)malloc(sizeof(int) * length);
     if (!vector) return NULL;
     for (int i = 0; i < length; i++) { vector[i] = rand() % 10; }
     return vector;

@@ -30,26 +30,22 @@ int part_length(int length, int rank, int size) {
     return (rank == size - 1) ? length / size + length % size : length / size;
 }
 
-void process_rank_zero(int length, int x_length, int size) {
+void process_rank_zero(int length, int x_part_length, int size) {
     int rank = 0;
     double timer = MPI_Wtime();
     
     // init vectors
     int* x = create_vector(length);
     int* y = create_vector(length);
-    if (!x || !y) {
-        fputs("Bad malloc. May be not enough memory?", stderr);
-        MPI_Abort(MPI_COMM_WORLD, 1);
-    }
 
     // --------------- send vectors ---------------------//
     for (int i = 1; i < size; i++) {
         MPI_Send(y, length, MPI_INT, i, TAG_FULL_SECOND, MPI_COMM_WORLD);
         int length_send = part_length(length, i, size);
-        MPI_Send(x + i*x_length, length_send, MPI_INT, i, TAG_PART_OF_FIRST, MPI_COMM_WORLD);
+        MPI_Send(x + i*x_part_length, length_send, MPI_INT, i, TAG_PART_OF_FIRST, MPI_COMM_WORLD);
     }       
     // -------------- calculate the part ----------------//
-    long long sum = calculate(x, y, x_length, length);
+    long long sum = calculate(x, y, x_part_length, length);
 
     // ---------------- merge (recieve) results -------------------//
     for (int i = 1; i < size; i++) {
@@ -67,18 +63,17 @@ void process_rank_zero(int length, int x_length, int size) {
 }
 
 
-void process_rank_non_zero(int length, int x_length, int rank, int size) {
+void process_rank_non_zero(int length, int x_part_length, int rank, int size) {
     // --------------- recieve vectors -------------------// 
         // ---------------- 2nd vector -------------------
         int* y = (int*) malloc(sizeof(int) * length);    
-        if (!y) MPI_Abort(MPI_COMM_WORLD, 2);
         MPI_Recv(y, length, MPI_INT, 0, TAG_FULL_SECOND, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
         // ---------------- 1st vector -----------------
-        int* x = (int*) malloc(sizeof(int) * x_length);
-        MPI_Recv(x, x_length, MPI_INT, 0, TAG_PART_OF_FIRST, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        int* x = (int*) malloc(sizeof(int) * x_part_length);
+        MPI_Recv(x, x_part_length, MPI_INT, 0, TAG_PART_OF_FIRST, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         // ----------------- calculate -------------------- //
-        long long sum = calculate(x, y, x_length, length);
+        long long sum = calculate(x, y, x_part_length, length);
         // --------------- merge to rank0 ----------------- //
         MPI_Send(&sum, 1, MPI_LONG_LONG, 0, TAG_RESULT, MPI_COMM_WORLD);
         free(x);
