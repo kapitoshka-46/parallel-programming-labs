@@ -54,3 +54,43 @@ void log_vector(const char* name, double* m, size_t N, bool to_stderr) {
     if (!to_stderr) fclose(f); 
     cnt++;
 }
+
+/* 
+    Mults m * v, m: [rows x cols],  v: [cols x 1] 
+    m: [rows x cols], double[rows*cols]
+    v: [cols x 1], double[cols]
+    buf: [rows x 1], double[rows] - buf for result vector
+*/
+void m_mult_vector(double* m, double* v, double* buf, size_t rows, size_t cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            buf[i] += m[i*rows + j] * v[j];
+        }
+    }
+}
+
+// Substruct m2 from m1
+void m_sum(double* buf, const double* m1, double scalar_m1,
+                                    const double* m2, double scalar_m2, size_t N) {
+    for (int i = 0; i < N; i++) {
+        buf[i] = m1[i]*scalar_m1 + m2[i]*scalar_m2;
+    }
+}
+
+void m_mult_scalar(double scalar, double* m, size_t N) {
+    for (int i = 0; i < N; i++) {
+        m[i] *= scalar;
+    }
+}
+
+double m_dot(const double* m1, const double* m2, size_t N) {
+    int res = 0;
+    for (int i = 0; i < N; i++) {
+        res += m1[i] * m2[i];
+    }
+    return res;
+}
+
+void m_copy(double* dst, const double* src, size_t N) {
+    memcpy(dst, src, N * sizeof(double));
+}
