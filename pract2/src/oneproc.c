@@ -1,6 +1,19 @@
+#include <string.h> // for memset
 #include <stdio.h>
 #include "utility.h"
 #include <stdbool.h>
+
+/* Check if point x is close to y in terms of Euclidean distance */
+bool is_close(double* x, double* y, double eps, size_t N) {
+    // We do not need to take sqrt, because
+    // sqrt(|x - y|) < eps) => |x-y| < eps*eps
+    double dist = 0;
+    for (int i = 0; i < N; i++) {
+        dist += (x[i] - y[i]) * (x[i] - y[i]);
+    }
+    // do not need abs(dist) because dist is a sum of squares
+    return dist < eps*eps;
+}
 
 
 int main() {
