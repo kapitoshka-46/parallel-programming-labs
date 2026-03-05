@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include "utility.h"
+#include <stdbool.h>
 
-
-void log_matrix(const char* name, double* m, size_t N) {
-    FILE* f = fopen("log.txt", "w");
+void log_matrix(const char* name, double* m, size_t N, bool to_stderr) {
+    
+    FILE* f = to_stderr ? stderr : fopen("log.txt", "w");
     fprintf(f, "%s:\n", name);
     for(int i = 0; i < N; i++) {
         for(int j = 0; j < N; j++) {
@@ -11,6 +12,7 @@ void log_matrix(const char* name, double* m, size_t N) {
         }
         fprintf(f, "\n");
     }
+    if (!to_stderr) fclose(f); 
 }
 
 int main() {
@@ -22,5 +24,11 @@ int main() {
     double* m = (double*) malloc(sizeof(double) * N * N);
     read_matrix(f, m, N);
 
-    log_matrix("read matrix", m, N);
+    
+    
+
+
+    // free resources
+    fclose(f);
+    free(m);
 }
